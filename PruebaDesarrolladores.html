@@ -1,0 +1,118 @@
+
+
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Prueba Para Desarrolladores Semilleros 2020</title>
+    <style>
+      html, body, #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewDiv"></div>
+    <div id="instruction" class="esri-widget">
+        Haga click en cualquier lugar en el mapa para ver la direccion respectiva
+      </div>
+  </body>
+</html>
+
+
+
+
+
+<link rel="stylesheet" href="https://js.arcgis.com/4.15/esri/themes/light/main.css">
+  <script src="https://js.arcgis.com/4.15/"></script>
+
+
+<script>
+    require([
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/layers/FeatureLayer",
+        "esri/widgets/BasemapToggle",
+        "esri/widgets/BasemapGallery",
+        "esri/tasks/Locator"
+      ], function(Map, MapView, FeatureLayer, BasemapToggle, BasemapGallery, Locator) {
+  
+        var map = new Map({
+            basemap: "topo-vector"//seleccionamos mapa base
+        });
+  
+        var view = new MapView({//configuramos la vista principal del mapa
+            container: "viewDiv",
+            map: map,
+            center: [-74.051250, 4.673639,], 
+            zoom: 15
+        });
+      
+        var capaColegios = new FeatureLayer({//cargamos la capa de los colegios en bogotá
+            url: "https://services7.arcgis.com/rxsqAG0ztOQO48WN/arcgis/rest/services/Colegios_Bogota_2017/FeatureServer/0"
+        });
+
+        map.add(capaColegios);//agregamos la capa
+
+        var basemapToggle = new BasemapToggle({//Creamos el widget que cambia entre dos mapas bases
+            view: view,
+            nextBasemap: "satellite"
+        });
+
+        view.ui.add(basemapToggle, "bottom-left");//Agregamos el Widget
+
+
+        var basemapGallery = new BasemapGallery({//Cargamos una galeria de mapas base para que se escoja cualquiera
+            view: view,
+            source: {
+            portal: {
+                url: "https://www.arcgis.com",
+                useVectorBasemaps: true  
+            }
+            }
+        });
+
+        view.ui.add(basemapGallery, "top-right");//agregamos la galleria de mapas base
+
+        var locatorTask = new Locator({//cargamos el servicio de localizacion
+            url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer"
+        });
+
+        view.popup.autoOpenEnabled = false;
+
+        view.on("click", function(event) {//Accionamos el popup en el momento del click en el mapa 
+            
+            var lat = Math.round(event.mapPoint.latitude * 1000) / 1000;//lo redondea
+            var lon = Math.round(event.mapPoint.longitude * 1000) / 1000;
+
+            view.popup.open({
+                // Agrega el titulo al popup con las coordenadas correspondientes
+                title: "Coordenadas: [" + lon + ", " + lat + "]",
+                location: event.mapPoint //Guarda la localizacion del punto donde se hizo el click
+            });
+
+
+            var params = {
+                location: event.mapPoint
+            };
+
+            // Ejecuta un geocode reverso usando la localizacion del click
+            locatorTask
+            .locationToAddress(params)
+            .then(function(response) {
+                // Si encuentra la direccion la decuelve normal
+                view.popup.content = response.address;
+            })
+            .catch(function(error) {
+                // Si la promesa falla y no se encuentra la direccion muiestra un mensaje de notificaicion
+                view.popup.content = "No fue posible encontrar la direccion de este lugar";
+            });
+
+        });
+
+    });
+    </script>
